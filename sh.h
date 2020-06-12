@@ -6,6 +6,7 @@
 #include <condition_variable>
 #include <mutex>
 #include <atomic>
+
 using namespace std;
 
 #define MAX_THREADS std::thread::hardware_concurrency() - 1;
@@ -13,11 +14,14 @@ atomic<bool> key_tr;
 condition_variable triger;
 mutex mtx;
 vector<int> key;
-
-
+vector<int> test_key_size;
+vector<bool> test_key_size_ch;
+vector<string> alph;
+vector<string> encr;
 
 void swap(int* a, int i, int j)
 {
+	
 	int s = a[i];
 	a[i] = a[j];
 	a[j] = s;
@@ -37,77 +41,112 @@ bool NextSet(int* a, int n)
 	return true;
 }
 
-bool check(vector<string> alph, string elem, int* a, int size) {
-	string norm_elem;
-	for (int j = 0; j < elem.size() / size; j++) {
-		for (int k = 0; k < size; k++) {
-			int el = j * size;
-			int pos;
-			for (int kk = 0; kk < size; kk++) {
-				if (k + 1 == a[kk]) {
-					pos = kk;
+bool check(int* a, int size) {
+	vector<string> unencr;
+	for (int i = 0; i < encr.size(); i++) {
+		string norm_elem;
+		for (int j = 0; j < encr[i].size() / size; j++) {
+			for (int k = 0; k < size; k++) {
+				int el = j * size;
+				int pos;
+				for (int kk = 0; kk < size; kk++) {
+					if (k + 1 == a[kk]) {
+						pos = kk;
+					}
+				}
+				norm_elem.push_back(encr[i][el + pos]);
+			}
+		}
+		unencr.push_back(norm_elem);
+		/*string word;
+		bool prob = false;
+		for (int j = 0; j < norm_elem.size(); j++) {
+			if (norm_elem[j] == ' ' || norm_elem[j] == '#') {
+				if (prob) {
+					break;
 				}
 			}
-			norm_elem.push_back(elem[el + pos]);
-		}
-	}
-	string word;
-	bool prob = false;
-	for (int i = 0; i < norm_elem.size(); i++) {
-		if (norm_elem[i] == ' '|| norm_elem[i] == '#') {
-			if (prob) {
-				break;
+			else {
+				if (!prob) {
+					prob = true;
+				}
+				word.push_back(norm_elem[j]);
 			}
 		}
-		else {
-			if (!prob) {
-				prob = true;
+		for (int i = 0; i < alph.size(); i++) {
+			if (word == alph[i]) {
+				return true;
 			}
-			word.push_back(norm_elem[i]);
+		}
+		return false;*/
+	}
+	int corect = 0;
+	int uncorect = 0;
+	for (int i = 0; i < unencr.size(); i++) {
+		bool end = true;
+		string word;
+		for (int j = 0; j < unencr[i].size(); j++) {
+			if (unencr[i][j] == ' ' || unencr[i][j] == '#') {
+				if (end) {
+				}
+				else {
+					bool w_cor = false;
+					for (int k = 0; k < alph.size(); k++) {
+						if (word == alph[k]) {
+							w_cor = true;
+						}
+					}
+					if (w_cor) {
+						corect++;
+					}
+					else {
+						uncorect++;
+					}
+					int ss = word.size();
+					for (int k = 0; k < ss; k++) {
+						word.pop_back();
+					}
+					end = true;
+				}			
+			}
+			else {
+				if (end) {
+					end = false;
+				}
+				word.push_back(unencr[i][j]);
+			}
 		}
 	}
-	for (int i = 0; i < alph.size(); i++) {
-		if (word == alph[i]) {
-			return true;
-		}
+	/*if (corect > uncorect) {
+		return true;
+	}
+	else if (corect = uncorect && corect != 0) {
+		return true;
+	}
+	else {
+		return false;
+	}*/
+	if (corect > uncorect && uncorect == 0) {
+		return true;
 	}
 	return false;
 }
 
-void func(int size, vector<string> alph, string elem) {
+void func(int size) {
 //635412
-	/*mtx.lock();
-	key.push_back(5);
-	key.push_back(2);
-	key.push_back(1);
-	key.push_back(3);
-	key.push_back(4);
-	mtx.unlock();
-	triger.notify_one();*/
-	/*int iter = 0;
-	for (int i = 2; i < size + 1; i++) {
-		if (i == 2) {
-			iter = 2;
-		}
-		else if (i > 2) {
-			int tt = iter * i;
-			iter = iter + tt;
-		}
-	}
-	for (int i = 0; i < iter; i++) {
-	}*/
+	
 	bool tr = false;
 	int* arr = new int[size];
 	for (int i = 0; i < size; i++) {
 		arr[i] = i + 1;
 	}
 	
-	if (check(alph,elem,arr,size)) {		
+	if (check(arr,size)) {		
 		tr = true;
 	}
 	else {
 		while (NextSet(arr, size)) {
-			if (check(alph, elem, arr, size)) {
+			if (check(arr, size)) {
 				tr = true;
 				break;
 			}
@@ -129,7 +168,41 @@ void func(int size, vector<string> alph, string elem) {
 
 }
 
+class Th_pool {
+private:
+	vector<thread> Pool;
+	mutex taskMutex;
+	void thread_while() {
+		bool ex = true;
+		while (ex) {
+			int el = -1;
+			for (int i = 0; i < test_key_size_ch.size(); i++) {
+				if (test_key_size_ch[i] == 0) {
+					el = i;
+					taskMutex.lock();
+					test_key_size_ch[i] = 1;
+					taskMutex.unlock();
+					break;
+				}
+			}
+			if (el == -1) {
+				ex = false;
+			}
+			else {
+				func(test_key_size[el]);
+			}
 
+
+		}
+	
+	
+	}
+public:
+	void push() {
+		Pool.push_back(thread(&Th_pool::thread_while, this));
+		Pool.back().detach();
+	}
+};
 
 void test() {
 	setlocale(LC_CTYPE, "Russian");
@@ -138,7 +211,7 @@ void test() {
 	string path;
 	cout << "Введите путь к алфавиту: "; cin >> path_alp; cout << endl;
 	cout << "Введите путь к зашифрованому файлу: "; cin >> path; cout << endl;
-	vector<string> alph;
+	//vector<string> alph;
 	ifstream alph_txt(path_alp);
 	while (alph_txt)
 	{
@@ -149,7 +222,7 @@ void test() {
 		else {alph.push_back(elem);}
 	}
 	alph_txt.close();
-	vector<string> encr;
+	//vector<string> encr;
 	ifstream encr_txt(path);
 	while (encr_txt)
 	{
@@ -161,7 +234,7 @@ void test() {
 	}
 	encr_txt.close();
 	if (encr.size() != 0) {
-		vector<int> test_key_size;		
+		//vector<int> test_key_size;		
 		for (int i = 1; i < encr[0].size()+1; i++) {
 			if (i == 1) {
 			}
@@ -169,6 +242,7 @@ void test() {
 				int r = encr[0].size() % i;
 				if (r == 0) {
 					test_key_size.push_back(i);
+					test_key_size_ch.push_back(0);
 				}
 			}
 		}
@@ -180,7 +254,11 @@ void test() {
 		else {
 			en_el = encr[0];
 		}
-		if (test_key_size.size() <= tmp) {
+		Th_pool pool;
+		for (int i = 0; i < test_key_size.size(); i++) {
+			pool.push();			
+		}
+		/*if (test_key_size.size() <= tmp) {
 			
 			for (int i = 0; i < test_key_size.size(); i++) {
 				thread th(func, test_key_size[i], alph, en_el);
@@ -202,7 +280,8 @@ void test() {
 				thread th(func, test_key_size[i], alph, en_el);
 				th.detach();
 			}
-		}
+		}*/
+		
 		unique_lock<mutex> lock(mtx);
 		triger.wait(lock);
 		vector<int> key_r = key;
