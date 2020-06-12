@@ -199,8 +199,11 @@ private:
 	}
 public:
 	void push() {
-		Pool.push_back(thread(&Th_pool::thread_while, this));
-		Pool.back().detach();
+		int tmp = MAX_THREADS;
+		for (int i = 0; i < tmp; i++) {
+			Pool.push_back(thread(&Th_pool::thread_while, this));
+			Pool.back().detach();
+		}
 	}
 };
 
@@ -247,17 +250,17 @@ void test() {
 			}
 		}
 		int tmp = MAX_THREADS;
-		string en_el;
-		if (encr[0].size() == 0 || encr[0].size() == 1) {
-			en_el = encr[1];
-		}
-		else {
-			en_el = encr[0];
-		}
+		//string en_el;
+		//if (encr[0].size() == 0 || encr[0].size() == 1) {
+		//	en_el = encr[1];
+		//}
+		//else {
+		//	en_el = encr[0];
+		//}
 		Th_pool pool;
-		for (int i = 0; i < test_key_size.size(); i++) {
-			pool.push();			
-		}
+		
+		pool.push();			
+		
 		/*if (test_key_size.size() <= tmp) {
 			
 			for (int i = 0; i < test_key_size.size(); i++) {
